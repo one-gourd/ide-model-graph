@@ -45,5 +45,17 @@
     "ide-lib-utils": "0.x",
     "mobx": "4.x",
     "mobx-state-tree": "3.14.x"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }
