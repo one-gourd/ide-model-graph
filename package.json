@@ -39,7 +39,9 @@
     "ts-node": "^7.0.1",
     "typescript": "^3.5.3"
   },
-  "dependencies": {},
+  "dependencies": {
+    "ss-linked-list": "^1.1.5"
+  },
   "peerDependencies": {
     "ide-model-utils": "0.x",
     "ide-lib-utils": "0.x",

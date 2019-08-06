@@ -14,6 +14,7 @@ import { PREFIX } from './constant';
 import { EdgeModel, IEdgeModel, IEdgeModelSnapshot } from './edge';
 import { VertexModel, IVertexModel, IVertexModelSnapshot, NULL_VERTEX_ID } from './vertex';
 
+const MAX_COUNT_ITERATOR = 500; // 最大
 
 /**
  * graph model
@@ -54,6 +55,35 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
             return edgeMap;
         }, 
 
+        // 建立 开始节点 - 边 索引
+        get starterToEdgeIndexes() {
+
+            const starterToEdgeIndexes = new Map<string, IEdgeModel>();
+            self.vertices.forEach((vertex: IVertexModel) => {
+                vertex.edges.forEach((edge: IEdgeModel) => {
+                    // 如果节点节点已经存在
+                    const startVid = edge.startVid;
+                    const currentEdges = starterToEdgeIndexes.get(startVid) || [];
+                    starterToEdgeIndexes.set(startVid, currentEdges.concat(edge));
+                });
+            });
+            return starterToEdgeIndexes;
+        },
+
+        // 建立 结束节点 - 边 索引
+        get enderToEdgeIndexes() {
+
+            const enderToEdgeIndexes = new Map<string, IEdgeModel>();
+            self.vertices.forEach((vertex: IVertexModel) => {
+                vertex.edges.forEach((edge: IEdgeModel) => {
+                    const endVid = edge.endVid;
+                    const currentEdges = enderToEdgeIndexes.get(endVid) || [];
+                    enderToEdgeIndexes.set(endVid, currentEdges.concat(edge));
+                });
+            });
+            return enderToEdgeIndexes;
+        },
+
         // 返回图所有边列表
         get allEdges(){
             const edgeArray: IVertexModel[]  = [];
@@ -65,8 +95,56 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
             return edgeArray;
         }
     }
+}).views(self=>{
+    return {
+        // 获取某个节点的 outer 边（即从该节点往外指向的边）
+        getOutEdgesById(vid: string): IEdgeModel[]{
+            const starterToEdgeIndexes = self.starterToEdgeIndexes;
+            return starterToEdgeIndexes.get(vid) || [];
+        },
+
+        getInEdgesById(vid: string): IEdgeModel[]{
+            const enderToEdgeIndexes = self.enderToEdgeIndexes;
+            return enderToEdgeIndexes.get(vid) || [];
+        }
+    }
 }).views(self => {
     return {
+
+        // 获取节点顺序
+        // TODO: 并行结构的解析
+        get edgeLinkedList() {
+
+            const edges = self.allEdges;
+            
+            // 从任何一个节点开始
+            const linkedList: string[] = [];
+            let count = 0; // 循环计数器，防止死循环
+
+            // 1. 先往后添加节点
+            let edge = edges[0];
+            linkedList.push(edge.startVid);
+            while (edge && count < MAX_COUNT_ITERATOR) {
+                count++;
+                const endVid = edge.endVid;
+                linkedList.push(endVid);
+                edge = self.getOutEdgesById(endVid)[0] || null
+            }
+
+            // 2. 然后再向前添加节点
+            edge = self.getInEdgesById(edges[0].startVid)[0] || null;
+            while (edge && count < MAX_COUNT_ITERATOR) {
+                count++;
+                const startVid = edge.startVid;
+                linkedList.unshift(startVid);
+                edge = self.getInEdgesById(startVid)[0] || null;
+            }
+            if(count >= MAX_COUNT_ITERATOR) {
+                console.warn(`[edgeLinkedList] 循环次数(${count})过多，有可能存在死循环，请检查`)
+            }
+
+            return linkedList;
+        },
 
         /**
          * 返回图中所有边的权重之和
@@ -136,8 +214,6 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
                 return result;
             }, []);
         }
-
-
     }
 }).views(self=>{
     return {
@@ -252,7 +328,7 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
             const startVertex = self.getVertexById(edge.startVid);
             const endVertex = self.getVertexById(edge.endVid);
 
-            // 先删除开始节点上的该
+            // 先删除开始节点上的边
             startVertex.deleteEdge(edge);
 
             // 如果是无向图，还需要删除反向边
@@ -262,6 +338,36 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
            
             return self;
         },
+
+        /**
+         * 从当前图中删除指定节点
+         *
+         * @param {IVertexModelSnapshot} vertex - 目标节点
+         * @param {boolean} [disableErrorWhenExist=false] - 当节点不存在的时候，是否提醒错误
+         * @returns
+         */
+        deleteVertex(vertex: IVertexModelSnapshot, disableErrorWhenExist = false){
+            // 判断边是否存在
+            if (!self.vertices.get(vertex.id)) {
+                if (disableErrorWhenExist) {
+                    return self;
+                } else {
+                    invariant(false, `Vertex ${vertex.id} not found in graph`);
+                }
+            }
+            // 先找到指向该节点的边（当前节点为目标点）
+            const edgesReferToVertex = self.getInEdgesById(vertex.id);
+            // 分别让开始节点中的边集合删除这些边
+            edgesReferToVertex.forEach((edge: IVertexModel) => {
+                const startVertex = self.getVertexById(edge.startVid);
+                startVertex.deleteEdge(edge);
+            });
+
+            // 然后删除当前节点
+            return detach(vertex);
+            
+        }
+
     }
 }).views(self => {
     return {
@@ -362,7 +468,6 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
                 // 然后将边进行反向操作
                 clonedEdge.reverse();
 
-                console.log(444, clonedEdge.toJSON());
                 // 再将边添加回图中
                 self._addEdgeByEdge(clonedEdge);
             });
