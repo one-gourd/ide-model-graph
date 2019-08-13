@@ -110,10 +110,17 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
     }
 }).views(self => {
     return {
+        
 
-        // 获取节点顺序
-        // TODO: 并行结构的解析
+        /**
+         * 返回当前图的节点顺序表
+         * 注：只能在有向图中进行此操作
+         *
+         * @returns
+         */
         get edgeLinkedList() {
+            
+            invariant(self.isDirected, '当前是无向图，只能在有向图中获取 `edgeLinkedList` 操作')
 
             const edges = self.allEdges;
             
@@ -122,8 +129,9 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
             let count = 0; // 循环计数器，防止死循环
 
             // 1. 先往后添加节点
-            let edge = edges[0];
-            linkedList.push(edge.startVid);
+            let edge = edges[0] || null;
+            edge && linkedList.push(edge.startVid);
+
             while (edge && count < MAX_COUNT_ITERATOR) {
                 count++;
                 const endVid = edge.endVid;
@@ -132,7 +140,7 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
             }
 
             // 2. 然后再向前添加节点
-            edge = self.getInEdgesById(edges[0].startVid)[0] || null;
+            edge = edges[0] && self.getInEdgesById(edges[0].startVid)[0] || null;
             while (edge && count < MAX_COUNT_ITERATOR) {
                 count++;
                 const startVid = edge.startVid;
@@ -141,6 +149,11 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
             }
             if(count >= MAX_COUNT_ITERATOR) {
                 console.warn(`[edgeLinkedList] 循环次数(${count})过多，有可能存在死循环，请检查`)
+            }
+
+            // 边界情况，如果只有一个节点的情况
+            if (!linkedList.length && !!self.allVertices.length){
+                linkedList.push(self.allVertices[0].id);
             }
 
             return linkedList;
@@ -219,6 +232,16 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
     return {
 
         /**
+         * 返回当前 graphes 的开始节点
+         * 注意只能在有向图中进行操作
+         */
+        get startVertex() {
+            const linkedList = self.edgeLinkedList; 
+            const result = linkedList && linkedList[0] && self.getVertexById(linkedList[0]);
+            return result;
+        },
+
+        /**
          * 根据开始、结束节点的 id 查找边
          *
          * @param {string} startVid - 开始节点 id
@@ -273,6 +296,11 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
                 } else {
                     invariant(false, `Edge ${edge.id} has already been added before`);
                 }
+            }
+            
+            // 当开始结尾节点都是 null，就不要添加
+            if(edge.startVid === NULL_VERTEX_ID && edge.endVid === NULL_VERTEX_ID) {
+                return self;
             }
 
             // 首先找到开始和结束节点
