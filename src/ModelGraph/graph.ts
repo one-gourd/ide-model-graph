@@ -293,7 +293,7 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
   .actions(self => {
     return {
       /**
-       * 添加节点
+       * 直接添加节点 - 不会自动添加边
        *
        * @param {IVertexModelSnapshot} newVertex
        * @returns
@@ -487,6 +487,50 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
   .actions(self => {
     return {
       /**
+       * 给指定 afterVertex 后插入节点
+       * 注：待插入的节点的边将被重置
+       *
+       * @param {IVertexModelSnapshot} vertex
+       * @param {IVertexModelSnapshot} afterVertex
+       */
+      insertAfterVertex(
+        vertex: IVertexModelSnapshot,
+        afterVertex: IVertexModelSnapshot,
+        weight = 0
+      ) {
+        // 先获取所有 afterVertex 所有的外向边
+        const outEdges = self.getOutEdgesById(afterVertex.id);
+
+        // 为保持纯粹性，需要将加入的 vertex 边全部清除
+        vertex.deleteAllEdges();
+
+        // 然后挨个将这些边添加到 vertex 中
+        outEdges.forEach((edge: IEdgeModel) => {
+          // 删除出边
+          const detachedEdge = afterVertex.deleteEdge(edge);
+          if (detachedEdge) {
+            //   修改其实边
+            detachedEdge.setStartVid(vertex.id);
+            // 添加到当前节点
+            vertex.addEdge(detachedEdge);
+          }
+        });
+
+        // 将节点加入到图中
+        self.addVertex(vertex);
+
+        // 然后将加入的点和 afterVertex 连接起来
+        const edgeModel = EdgeModel.create({
+          startVid: afterVertex.id,
+          endVid: vertex.id,
+          weight: weight
+        });
+        self._addEdgeByEdge(edgeModel);
+
+        return self;
+      },
+
+      /**
        * 同时添加节点和边，是对 `graph._addEdgeByEdge` 的增强
        * 外部想要给图新增边，建议调用该函数，而非 `graph._addEdgeByEdge`
        *
@@ -575,7 +619,7 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
         // 执行删除操作
         const detached = self.deleteVertex(vertex);
 
-        // 自动 link 上下游节点
+        // 自动 link 上下游节点，新增边的权重是 0
         fromVertices.forEach((fromVertex: IVertexModel) => {
           nextVertices.forEach((nextVertex: IVertexModel) => {
             self.addEdge({ start: fromVertex, end: nextVertex });
