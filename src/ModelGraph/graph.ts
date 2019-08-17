@@ -260,13 +260,23 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
   .views(self => {
     return {
       /**
-       * 返回当前 graphes 的开始节点
+       * 返回当前 graphes 的所有开始节点
        * 注意只能在有向图中进行操作
+       * 开始节点的定义：没有入边的节点都可以当做开始节点
        */
-      get startVertex() {
-        const linkedList = self.edgeLinkedList;
-        const result =
-          linkedList && linkedList[0] && self.getVertexById(linkedList[0]);
+      get firstVertices(): IVertexModel[] {
+        invariant(!!self.isDirected, '只能在有向图中才有 “首节点” 的概念');
+
+        const result: IVertexModel[] = [];
+
+        // 遍历所有节点，查找他们是否在 InEdges 索引表中
+        self.vertices.forEach((vertex: IVertexModel) => {
+          const inEdges = self.getInEdgesById(vertex.id);
+          if (!inEdges || !inEdges.length) {
+            result.push(vertex);
+          }
+        });
+
         return result;
       },
 
@@ -498,6 +508,8 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
         afterVertex: IVertexModelSnapshot,
         weight = 0
       ) {
+        invariant(vertex && vertex.id, '操作失败：源节点不存在');
+        invariant(afterVertex && afterVertex.id, '操作失败：目标节点不存在');
         // 先获取所有 afterVertex 所有的外向边
         const outEdges = self.getOutEdgesById(afterVertex.id);
 
@@ -526,6 +538,26 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
           weight: weight
         });
         self._addEdgeByEdge(edgeModel);
+
+        return self;
+      },
+
+      /**
+       * 将节点插入作为图的首个节点
+       *
+       * @param {IVertexModelSnapshot} vertex
+       * @param {number} weight
+       */
+      insertAsFirstVertex(vertex: IVertexModelSnapshot, weight = 0) {
+        // 首先查找到当前图中的首个节点
+        const firstVertices = self.firstVertices;
+
+        // 先将 vertex 添加到图中
+        self.addVertex(vertex);
+        // 将节点和这些 firstVertices 进行连接
+        firstVertices.forEach((firstVertex: IVertexModel) => {
+          self.addEdge({ start: vertex, end: firstVertex, weight });
+        });
 
         return self;
       },

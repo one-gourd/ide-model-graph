@@ -104,7 +104,6 @@ describe('Graph [insertAfterVertex] - 交换节点', () => {
   });
 
   it('交换 B->C 节点', () => {
-
     // 先把 B 节点从图中取出来
     let removed = graph.deleteVertexAndAutoLink(vertexB);
     graph.insertAfterVertex(removed, vertexC);
@@ -115,7 +114,6 @@ describe('Graph [insertAfterVertex] - 交换节点', () => {
   });
 
   it('交换 C->B 节点', () => {
-
     // 先把 B 节点从图中取出来
     let removed = graph.deleteVertexAndAutoLink(vertexC);
     graph.insertAfterVertex(removed, vertexA);
@@ -133,5 +131,68 @@ describe('Graph [insertAfterVertex] - 交换节点', () => {
     expect(edges).toEqual(expect.arrayContaining(['A_B', 'B_D', 'D_C']));
     expect(graph.edgeLinkedList).toEqual(['A', 'B', 'D', 'C']);
     expect(graph.weight).toBe(1);
+  });
+});
+
+describe('Graph [insertAsFirstVertex] - 插入首节点', () => {
+  let graph: IGraphModel,
+    vertexA: IVertexModel,
+    vertexB: IVertexModel,
+    vertexC: IVertexModel,
+    vertexD: IVertexModel,
+    edges: IEdgeModel[];
+
+  beforeEach(() => {
+    graph = GraphModel.create({
+      id: 'G',
+      isDirected: true
+    });
+
+    vertexA = VertexModel.create({
+      id: 'A'
+    });
+    vertexB = VertexModel.create({
+      id: 'B'
+    });
+    vertexC = VertexModel.create({
+      id: 'C'
+    });
+    vertexD = VertexModel.create({
+      id: 'D'
+    });
+
+    graph.addVertex(vertexA);
+    graph.addVertex(vertexB);
+    graph.addVertex(vertexC);
+  });
+
+  it('将 D 节点插入成为首节点', () => {
+    graph.insertAsFirstVertex(vertexD, 3);
+
+    edges = graph.allEdges.map((edge: IEdgeModel) => edge.id);
+    expect(edges).toEqual(expect.arrayContaining(['D_A', 'D_B', 'D_C']));
+    expect(graph.weight).toBe(9);
+  });
+
+  it('先连接 A->B，然后将 D 节点插入成为首节点', () => {
+    graph.addEdge({ start: vertexA, end: vertexB });
+
+    graph.insertAsFirstVertex(vertexD, 3);
+
+    edges = graph.allEdges.map((edge: IEdgeModel) => edge.id);
+    expect(edges).toEqual(expect.arrayContaining(['D_A', 'A_B', 'D_C']));
+    expect(graph.weight).toBe(6);
+  });
+
+  it('先连接 A->B->C，然后将 D 节点插入成为首节点', () => {
+    graph
+      .addEdge({ start: vertexA, end: vertexB })
+      .addEdge({ start: vertexB, end: vertexC });
+
+    graph.insertAsFirstVertex(vertexD, 3);
+
+    edges = graph.allEdges.map((edge: IEdgeModel) => edge.id);
+    expect(edges).toEqual(expect.arrayContaining(['D_A', 'A_B', 'B_C']));
+    expect(graph.weight).toBe(3);
   });
 });
