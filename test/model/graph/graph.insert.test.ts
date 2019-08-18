@@ -196,3 +196,30 @@ describe('Graph [insertAsFirstVertex] - 插入首节点', () => {
     expect(graph.weight).toBe(3);
   });
 });
+
+describe.only('Graph [insertAsFirstVertex] - 插入首节点 - 边界', () => {
+  let graph: IGraphModel, vertexA: IVertexModel;
+
+  it('将 A 节点删除后重新插入成为首节点', () => {
+    graph = GraphModel.create({
+      id: 'G',
+      isDirected: true
+    });
+
+    vertexA = VertexModel.create({
+      id: 'A'
+    });
+
+    graph.addVertex(vertexA);
+
+    expect(graph.edgeLinkedList).toEqual(['A']);
+
+    graph.deleteVertexAndAutoLink(vertexA);
+
+    expect(graph.edgeLinkedList).toEqual([]);
+
+    graph.insertAsFirstVertex(vertexA);
+
+    expect(graph.edgeLinkedList).toEqual(['A']);
+  });
+});

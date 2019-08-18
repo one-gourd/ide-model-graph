@@ -651,6 +651,9 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
         // 执行删除操作
         const detached = self.deleteVertex(vertex);
 
+        // 很重要的一步：同时删除 detach 节点的边，否则残留的信息会影响下一次的拖拽
+        detached.deleteAllEdges();
+
         // 自动 link 上下游节点，新增边的权重是 0
         fromVertices.forEach((fromVertex: IVertexModel) => {
           nextVertices.forEach((nextVertex: IVertexModel) => {
