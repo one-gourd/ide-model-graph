@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.1.5](https://github.com/one-gourd/ide-model-graph/compare/v0.1.4...v0.1.5) (2019-08-19)
+
+
+### Bug Fixes
+
+* 🐛 修复删除边时残留原来 edge 信息的 bug ([8250ff6](https://github.com/one-gourd/ide-model-graph/commit/8250ff6))
+
+
+### Features
+
+* 🎸 功能新增: deleteVertexAndAutoLink ([8b77044](https://github.com/one-gourd/ide-model-graph/commit/8b77044))
+* 🎸 功能新增: insertAfterVertex ([0826614](https://github.com/one-gourd/ide-model-graph/commit/0826614))
+* 🎸 功能新增: insertAsFirstVertex, 插入首节点 ([e43862c](https://github.com/one-gourd/ide-model-graph/commit/e43862c))
+
+
+
 ## [0.1.4](https://github.com/one-gourd/ide-model-graph/compare/v0.1.3...v0.1.4) (2019-08-13)
 
 
