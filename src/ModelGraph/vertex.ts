@@ -14,22 +14,10 @@ import {
   EMPTY_JSON_SNAPSHOT
 } from 'ide-model-utils';
 
-import { PREFIX } from './constant';
 import { EdgeModel, IEdgeModel, IEdgeModelSnapshot } from './edge';
 import { invariant } from 'ide-lib-utils';
+import { PREFIX, ICloneFns, DEFAULT_ID_CLONER, DEFAULT_META_CLONER } from './constant';
 
-// 默认是返回当前 id 数值
-export const DEFAULT_ID_CLONER = function(id: string) {
-  return id;
-};
-export const DEFAULT_META_CLONER = function(meta: any) {
-  return meta;
-};
-
-export interface ICloneFns {
-  cloneId?: typeof DEFAULT_ID_CLONER;
-  cloneMeta?: typeof DEFAULT_META_CLONER;
-}
 
 /**
  * 节点 model
@@ -163,13 +151,13 @@ export const VertexModel: IAnyModelType = quickInitModel('VertexModel', {
       /**
        * 克隆当前节点，需要保证 id 不一样
        * 通过传入指定函数可以操作该节点的 meta 信息（诸如修改节点名字等副作用操作）
-       * @returns
+       * @param {ICloneFns} [verteCloneFns={}] - 克隆 vertex 的配置项
        */
-      clone(cloneFns: ICloneFns = {}) {
+      clone(verteCloneFns: ICloneFns = {}) {
         const {
           cloneId = DEFAULT_ID_CLONER,
           cloneMeta = DEFAULT_META_CLONER
-        } = cloneFns;
+        } = verteCloneFns;
 
         invariant(!!cloneId, '[vertex] 缺少 id clone 方法');
         invariant(!!cloneMeta, '[vertex] 缺少 meta clone 方法');
@@ -180,7 +168,7 @@ export const VertexModel: IAnyModelType = quickInitModel('VertexModel', {
         });
 
         // 同时调用 cloneMeta 生成新 meta，注意为了防止修改原 meta，这里需要 assign
-        clonedVertex.setMeta(cloneMeta(Object.assign({}, self.meta)));
+        clonedVertex.setMeta(cloneMeta(Object.assign({}, self.meta), self.id));
 
         // 同时需要挨个遍历 edges 集合，修改其中节点原 id 为现 id
         const newEdges = self.edges.map((edge: IEdgeModel) => {

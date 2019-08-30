@@ -197,7 +197,7 @@ describe('Graph [insertAsFirstVertex] - 插入首节点', () => {
   });
 });
 
-describe.only('Graph [insertAsFirstVertex] - 插入首节点 - 边界', () => {
+describe('Graph [insertAsFirstVertex] - 插入首节点 - 边界', () => {
   let graph: IGraphModel, vertexA: IVertexModel;
 
   it('将 A 节点删除后重新插入成为首节点', () => {

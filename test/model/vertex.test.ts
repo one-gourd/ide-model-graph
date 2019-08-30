@@ -274,7 +274,7 @@ describe('Vertex - 节点', () => {
     }).toThrow();
   });
 
-  describe.only('clone 节点', () => {
+  describe('clone 节点', () => {
     let vertexA: IVertexModel;
     beforeEach(() => {
       vertexA = VertexModel.create({
@@ -312,8 +312,8 @@ describe('Vertex - 节点', () => {
       const cloneId = (id: string) => {
         return `${id}${count1++}`;
       };
-      const cloneMeta = (meta: any) => {
-        return { foo: `bar${count2++}`, ...meta };
+      const cloneMeta = (meta: any, id: string) => {
+        return { foo: `bar${count2++}-${id}`, ...meta };
       };
 
       const cloned1 = vertexA.clone({
@@ -339,7 +339,7 @@ describe('Vertex - 节点', () => {
       expect(cloned1.edges[0].id).toBe('A1_B');
       expect(cloned1.meta).toEqual({
           hello: 'world',
-        foo: `bar1`
+        foo: `bar1-A`
       });
 
       expect(cloned2.id).toBe('A2');
@@ -347,7 +347,7 @@ describe('Vertex - 节点', () => {
       expect(cloned2.edges[0].id).toBe('A2_B');
       expect(cloned2.meta).toEqual({
           hello: 'world',
-        foo: `bar2`
+        foo: `bar2-A`
       });
     });
   });

@@ -14,7 +14,6 @@ import {
   EMPTY_JSON_SNAPSHOT
 } from 'ide-model-utils';
 
-import { PREFIX } from './constant';
 import { EdgeModel, IEdgeModel, IEdgeModelSnapshot } from './edge';
 import {
   VertexModel,
@@ -22,8 +21,10 @@ import {
   IVertexModelSnapshot,
   NULL_VERTEX_ID
 } from './vertex';
+import { PREFIX, ICloneFns, DEFAULT_ID_CLONER, DEFAULT_META_CLONER } from './constant';
 
 const MAX_COUNT_ITERATOR = 500; // 最大
+
 
 /**
  * graph model
@@ -302,6 +303,62 @@ export const GraphModel: IAnyModelType = quickInitModel('GraphModel', {
   })
   .actions(self => {
     return {
+    /**
+     * 克隆当前 graph，包含对 vertex 的克隆
+     *
+     * @param {ICloneFns} [cloneFns={}] - 配置 graph 克隆方法
+      * @param {
+      ICloneFns
+    }[vertexCloneFns] - 配置 vertex 克隆方法，直接传给 vertex.clone 方法即可
+     */
+    clone(
+      graphCloneFns: ICloneFns = {}, vertexCloneFns?: ICloneFns
+    ){
+
+        const {
+          cloneId = DEFAULT_ID_CLONER,
+          cloneMeta = DEFAULT_META_CLONER
+        } = graphCloneFns;
+
+        invariant(!!cloneId, '[graph] 缺少 id clone 方法');
+        invariant(!!cloneMeta, '[graph] 缺少 meta clone 方法');
+
+        // 先创建新的 graph,  cloneId 方法生成新 id
+        const clonedGraph = GraphModel.create({
+          id: cloneId(self.id),
+          isDirected: self.isDirected
+        });
+
+        // 同时调用 cloneMeta 生成新 meta，注意为了防止修改原 meta，这里需要 assign
+        clonedGraph.setMeta(cloneMeta(Object.assign({}, self.meta), self.id));
+
+        // 挨个 clone 图中的节点，注意 edge 的 clone 需要进行一次校准
+        const clonedVertices: {[key: string]: IVertexModel} = {};
+        
+        // 克隆之后还需要对边的节点做一次 “整形”，因此需要记录节点映射表
+        const vidMapper: {[key: string]: string} = {};
+        for (const vertex of self.vertices.values()) {
+          // 调用 vetex 的 clone 方法
+          const clonedVertex = vertex.clone(vertexCloneFns);
+          vidMapper[vertex.id] = clonedVertex.id; // 记录节点名称 转换前 -> 转换后
+          clonedVertices[clonedVertex.id] = clonedVertex;
+        }
+        clonedGraph.setVertices(clonedVertices);
+
+        // 重新给每条边做一次整形
+        clonedGraph.allEdges.forEach((edge: IEdgeModel) => {
+          if (!!vidMapper[edge.startVid]) {
+            edge.setStartVid(vidMapper[edge.startVid])
+          }
+          if (!!vidMapper[edge.endVid]) {
+            edge.setEndVid(vidMapper[edge.endVid])
+          }
+        });
+
+        return clonedGraph;
+    },
+
+
       /**
        * 直接添加节点 - 不会自动添加边
        *
